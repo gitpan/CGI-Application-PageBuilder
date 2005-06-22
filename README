@@ -1,0 +1,122 @@
+NAME
+    CGI::Application::PageBuilder - Simplifies building pages with multiple
+    templates in CGI::Application.
+
+SYNOPSIS
+    This module is built on the idea that building complex web pages with
+    the default CGI::Application method can get to be a real mess. I
+    personally found it much easier to build pages from many different
+    smaller templates than to try to create one large template. This is
+    especially true when displaying large sets of data from a database where
+    you would be filling in a lot of <TMPL_VAR>s for each cell. This module
+    aims to make that process a little easier.
+
+    So instead of:
+
+     sub run_mode {
+            my $self = shift;
+            my $header = $self->load_tmpl( 'header.tmpl' )->output();
+            my $html;
+
+            my $start = $self->load_tmpl( 'view_start.tmpl' );
+            $start->param( view_name => 'This View' );
+            $html .= $start->output();
+
+             my $db = MyApp::DB::Views->retrieve_all(); # Class::DBI
+             while ( my $line = $db->next() ) {
+                     my $template = $self->load_tmpl( 'view_element.tmpl' );
+                     $template->param( name => $line->name() );
+                     $template->param( info => $line->info() );
+                     $html .= $template->output();
+             }
+             $html .= $self->load_tmpl( 'view_end.tmpl' )->output();
+             $html .= $self->load_tmpl( 'footer.tmpl' )->output();
+             return $html;
+     }
+
+    You can do this:
+
+     sub run_mode {
+            my $self = shift;
+            my $page = new CGI::Application::PageBuilder(
+                        Header => 'header.tmpl',
+                        Footer => 'footer.tmpl',
+                        Super => $self );
+            $page->add_template( 'view_start.tmpl' );
+
+            my $db = MyApp::DB::Views->retrieve_all();
+            while( my $line = $db->next() ) {
+                     $page->add_template( 'view_element.tmpl' );
+                     $page->add_param( name => $line->name() );
+                     $page->add_param( info => $line->info() );
+            }
+            $page->add_template( 'view_end.tmpl' );
+            return $page->output();
+     }
+
+    Which arguably looks much more clean.
+
+METHODS
+  new
+    Header: The optional header to use.
+
+    Footer: The optional footer to use.
+
+    Super: The CGI::Application object passed to your run mode. This is
+    required.
+
+  loose
+    $page->loose( value );
+
+    Value is 0 or 1 depending on whether you want die_on_bad_params enabled
+    or not. See HTML::Template for for information. The default behavior is
+    to have strict templates since this is also the default for
+    HTML::Template.
+
+  add_template
+    $page->add_template( 'the_template_to_use.tmpl' );
+
+    Adds the template to the page and sets it as the next template to apply
+    add_param to.
+
+  add_param
+    $page->add_param( name, value );
+
+    Sets the value for the param in the template. This applies to the last
+    template loaded by add_template.
+
+  output
+    return $page->output();
+
+    Returns the HTML of the built page.
+
+TODO
+    There is probably a much more elegant way to do this.
+
+    At the moment add_param() automatically tries to add the parameter to
+    the last template loaded. It might be nice to have a simple way of
+    adding a parameter to an already loaded template. Some might possibly
+    prefer to load all of their templates at once and then add parameters
+    later on in the code. Perhaps something like:
+
+            my $page = new CGI::Application::PageBuilder(
+                    Header => 'header.tmpl',
+                    Footer => 'footer.tmpl',
+                    Super => $self );
+            $page->add_template( 'one.tmpl' );
+            $page->add_template( 'two.tmpl' );
+        
+            ...
+        
+            $page->add_param( 'one.tmpl', param, value );
+            $page->add_param( 'one.tmpl', param, value );
+        
+            etc.
+        
+WEBSITE
+    Check out http://library.hellyeah.org/index.pl?CGIApplicationPageBuilder
+    for more information.
+
+AUTHOR
+    Clint Moore, cmoore@cpan.org
+
