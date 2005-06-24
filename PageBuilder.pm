@@ -80,7 +80,7 @@ Adds the template to the page and sets it as the next template to apply param to
 
 $page->param( name, value );
 
-Sets the value for the param in the template.  This applies to the last template loaded by L<template>.
+Sets the value for the param in the template.  This applies to the last template loaded by B<template()>.
 
 =head2 output
 
@@ -110,8 +110,6 @@ At the moment param() automatically tries to add the parameter to the last templ
  	
  	etc.
 
-Check out http://library.hellyeah.org/index.pl?CGIApplicationPageBuilder for more information.
-
 =head1 AUTHOR
 
 Clint Moore C<< <cmoore@cpan.org> >>
@@ -125,10 +123,11 @@ This module is free software; you can redistribute it and/or modify it under the
 =cut
 
 package CGI::Application::PageBuilder;
-$VERSION = '0.5';
+$VERSION = '0.6';
 
 use constant {
-	TEMPLATE_ERRORS_ARE_FATAL => 1,
+    TEMPLATE_ERRORS_NOT_FATAL => 1,
+    TEMPLATE_ERRORS_ARE_FATAL => 0,
 };
 
 
@@ -153,7 +152,17 @@ sub template {
 	$self->{_template_count}++;
 
 	my $tname = "_template_" . $self->{_template_count};
-	my $tp = $self->{super}->load_tmpl( $template );
+
+	my $tp;
+
+	local $^W = 0;
+
+	if ( $self->{_loose} == TEMPLATE_ERRORS_NOT_FATAL ) {
+		$tp = $self->{super}->load_tmpl( $template, die_on_bad_params => TEMPLATE_ERRORS_NOT_FATAL );
+	} else {
+		$tp = $self->{super}->load_tmpl( $template );
+	}
+
 	$self->{$tname} = $tp;
 }
 
@@ -195,6 +204,11 @@ sub param {
 
 	my $tname = "_template_" . $self->{_template_count};
 	$self->{$tname}->param( $param, $value );
+}
+
+sub loose {
+	my( $self, $setting ) = @_;
+	$self->{_loose} = $setting;
 }
 
 sub output {
